@@ -1,0 +1,350 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Globalization;
+using System.Threading;
+
+
+namespace updatersklepu
+{
+
+
+    
+    class updater
+    {
+
+
+
+
+        public static void odczyt(ref List<produkt> produkty, int count)
+        {
+            
+            Encoding enc = Encoding.GetEncoding("Windows-1250");
+            StreamReader reader = new StreamReader(@"baza.txt", enc);
+            string line;
+            string line2;
+            string[] substring;
+            int id=0;
+            string nazwa="";
+            int model=0;
+            float quantity=0f;
+            decimal price=0m;
+            decimal upc=0m;
+
+            line = reader.ReadLine();
+
+            for (int i = 0; i <= count - 2; i++)
+            {
+                line = reader.ReadLine();
+                substring = line.Split('\t');
+                while(substring.Length<40)
+                {
+                    line2 = reader.ReadLine();
+                    line= string.Concat(line, line2);
+                    substring = line.Split('\t');
+                    count -= 1;
+                }
+                //Console.WriteLine();
+                //Console.WriteLine("{0}: ", i);
+                for (int pozycja = 0; pozycja <= (substring.Length - 1); pozycja++)
+                {
+                    
+                    switch (pozycja)
+                    {
+                        case 0:
+                            {
+                                nazwa = substring[0];
+                                break;
+                            }
+                        case 2:
+                           {
+                               id= int.Parse(substring[2]);
+                               model = id;
+                               break;
+                           }
+                        case 12:
+                            {
+                                quantity=float.Parse(substring[12]);
+                                break;
+                            }
+                        case 16:
+                           {
+                               price = decimal.Parse(substring[16]);
+                               break;
+                           }
+                        case 17:
+                           {
+                               upc = decimal.Parse(substring[17]);
+                               break;
+                           }
+                        default:
+                           { break; }
+                           
+
+                    }
+                    
+                }
+
+                produkty.Add(new produkt(id, nazwa, model, quantity, price, price, upc));
+            }
+            
+            reader.Close();
+        }
+
+
+        public static void zapisz(int count, List<produkt> produkty, ref bool price, ref bool quantity, ref bool sku, ref bool upc, ref bool name)
+        {
+
+            Console.WriteLine("Podaj ostatnie ID w bazie sklepu internetowego.");
+            int last = int.Parse(Console.ReadLine());
+            StreamWriter writer = new StreamWriter(@"oc_product.txt", false);
+            StreamWriter writer2 = new StreamWriter(@"oc_product_description.txt", false);
+            DateTime now = new System.DateTime();
+            now = System.DateTime.Now;
+            
+            //writer.Write("UPDATE oc_product ");
+            //
+            //for (int i = 0; i <= produkty.Count-1; i++)
+            int index = produkty.FindIndex(r => r.id.Equals(last));
+           // Console.WriteLine(index);
+            //Console.ReadLine();
+           // for (int i = 0; i <= last - 1; i++)
+            for (int i = 0; i <= index; i++)
+            {
+                writer.Write("UPDATE oc_product SET model='{0}'", produkty[i].model);
+                
+                if (sku==true)
+                { writer.Write(", sku='{0}'", produkty[i].sku); }
+                if (upc == true)
+                { writer.Write(", upc='{0}'", produkty[i].upc); }
+                if (quantity == true)
+                { writer.Write(", quantity='{0}'", produkty[i].quantity); }
+                if (price == true )
+                { writer.Write(", price='{0}'", produkty[i].price); }
+                writer.WriteLine(" WHERE product_id={0};", produkty[i].id);
+            }
+            writer.Write("INSERT INTO oc_product (product_id, model, sku, upc, quantity, stock_status_id, manufacturer_id, price, date_available, date_added, date_modified) VALUES ");
+            writer2.Write("INSERT INTO oc_product_description (product_id, language_id, name) VALUES ");
+            for (int i = index+1; i <= produkty.Count - 1; i++)
+            {
+                //writer.WriteLine("({0},{1},{2},{3},{4},5,0,{5},{6},{7},{8}),", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, produkt.modified());
+                writer2.Write("\r\n('{0}','1','{1}'),", produkty[i].id, produkty[i].nazwa);
+                if (i < produkty.Count - 1)
+                {
+                    writer.WriteLine("('{0}','{1}','{2}','{3}','{4}','5','0','{5}','{6}','{7}','{8}'),", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    writer2.Write("\r\n('{0}','2','{1}'),", produkty[i].id, produkty[i].nazwa);
+                }
+                else
+                {
+                    writer.WriteLine("('{0}','{1}','{2}','{3}','{4}','5','0','{5}','{6}','{7}','{8}');", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    writer2.Write("\r\n('{0}','2','{1}');", produkty[i].id, produkty[i].nazwa);
+                    writer2.Write("\r\nINSERT INTO oc_product_to_store (product_id, store_id) VALUES ");
+                }
+            }
+            for (int i = index + 1; i <= produkty.Count - 1; i++)
+            {
+              if (i < produkty.Count - 1)
+                { writer2.Write("\r\n('{0}','0'),", produkty[i].id); }
+                else
+                { writer2.Write("\r\n('{0}','0');", produkty[i].id); }
+            }
+
+            writer.Close();
+            writer2.Close();
+        }
+
+
+        
+/*
+        public static void zapisz(int count,List<produkt> produkty)
+        {
+
+            Console.WriteLine("Podaj ostatnie ID w bazie sklepu internetowego.");
+            int last= int.Parse(Console.ReadLine());
+            StreamWriter writer = new StreamWriter(@"wynik_product.txt", false);
+            StreamWriter writer2 = new StreamWriter(@"wynik_product_description.txt", false);
+            //writer.Write("UPDATE oc_product ");
+            //
+            //for (int i = 0; i <= produkty.Count-1; i++)
+            for (int i = 0; i <= last - 1; i++)
+            {
+                writer.WriteLine("UPDATE oc_product SET model='{0}', sku='{1}', upc='{2}', quantity='{3}', price='{4}' WHERE product_id={5};", produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].id);               
+            }
+            writer.Write("INSERT INTO oc_product (product_id,model,sku,upc,quantity,stock_status_id,manufacturer_id,price,date_available,date_added,date_modified) VALUES ");
+            writer2.Write("INSERT INTO oc_product_description (product_id, language_id, name) VALUES ");
+            for (int i = last; i<=produkty.Count-1;i++ )
+            {
+                //writer.WriteLine("({0},{1},{2},{3},{4},5,0,{5},{6},{7},{8}),", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, produkt.modified());
+                writer2.Write("\r\n('{0}','1','{1}'),", produkty[i].id, produkty[i].nazwa);
+                if (i<produkty.Count-1)
+                {
+                writer.WriteLine("({0},{1},{2},{3},{4},5,0,{5},{6},{7},{8}),", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, produkt.modified());
+                writer2.Write("\r\n('{0}','2','{1}'),", produkty[i].id, produkty[i].nazwa);
+                }
+                else
+                {
+                    writer.WriteLine("({0},{1},{2},{3},{4},5,0,{5},{6},{7},{8});", produkty[i].id, produkty[i].model, produkty[i].sku, produkty[i].upc, produkty[i].quantity, produkty[i].price, produkty[i].date_available, produkty[i].date_added, produkt.modified());
+                    writer2.Write("\r\n('{0}','2','{1}');", produkty[i].id, produkty[i].nazwa);
+                }
+            }
+                writer.Close();
+                writer2.Close();
+        }*/
+        //sku - cena bez podatku
+        //upc - cena z podatkiem
+
+        public static void zaktualizowac(ref bool opcja)
+        {
+            Console.WriteLine("Zaktualizować? Y/N");
+            char y_n = Console.ReadKey().KeyChar;
+            if (y_n=='Y'||y_n=='y')
+            {   opcja = true; }
+            if (y_n=='N'||y_n=='n')
+            { opcja = false; }
+        }
+
+        public static void opcje(ref bool price,ref bool quantity,ref bool sku,ref bool upc,ref bool name,ref short choice)
+        {
+            
+            
+            while (choice!=6)
+            {
+                Console.WriteLine("Wybierz dane do zaktualizowania:");
+                Console.Write("1.NAZWA:");
+                if (name == true) { Console.WriteLine("Tak"); } else Console.WriteLine("Nie");
+                Console.Write("2.CENA:");
+                if (price == true) { Console.WriteLine("Tak"); } else Console.WriteLine("Nie");
+                Console.Write("3.ILOŚĆ:");
+                if (quantity == true) { Console.WriteLine("Tak"); } else Console.WriteLine("Nie");
+                Console.Write("4.CENA W SKLEPIE STACJONARNYM(NETTO):");
+                if (sku == true) { Console.WriteLine("Tak"); } else Console.WriteLine("Nie");
+                Console.Write("5.CENA W SKLEPIE STACJONARNYM(BRUTTO):");
+                if (upc == true) { Console.WriteLine("Tak"); } else Console.WriteLine("Nie");
+                Console.WriteLine("6. Wygeneruj pliki.");
+                choice = short.Parse(Console.ReadLine());
+            
+            zly_wybor:            
+                switch (choice)
+                {
+                    case 1:
+                        {
+                            Console.WriteLine("Nazwa");
+                            zaktualizowac(ref name);
+                            Console.Clear();
+                            break;
+                        }
+                    case 2:
+                        {
+                            Console.WriteLine("Cena");
+                            zaktualizowac(ref price);
+                            Console.Clear();
+                            break;
+                        }
+                    case 3:
+                        {
+                            Console.WriteLine("Ilość");
+                            zaktualizowac(ref quantity);
+                            Console.Clear();
+                            break;
+                        }
+                    case 4:
+                        {
+                            Console.WriteLine("Cena w sklepie(netto)");
+                            zaktualizowac(ref sku);
+                            Console.Clear();
+                            break;
+                        }
+                    case 5:
+                        {
+                            Console.WriteLine("Cena w sklepie(brutto)");
+                            zaktualizowac(ref upc);
+                            Console.Clear();
+                            break;
+                        }
+                    case 6:
+                        {
+                            Console.Clear();
+                            break;
+                        }
+                    default:
+                        {                            
+                            goto zly_wybor;
+                        }
+                }
+                    
+            }
+
+        }
+
+    }
+
+    class produkt
+    {
+        public int id { get; set; }
+        public string nazwa { get; set; }
+        public int model { get; set; }
+        public float quantity { get; set; }
+        public decimal price { get; set; }
+        public decimal sku { get; set; }
+        public decimal upc { get; set; }
+        public string date_available { get; set; }
+        public string date_added { get; set; }
+        public string date_modified { get; set; }
+
+
+        public produkt(int id, string nazwa, int model, float quantity, decimal price, decimal sku, decimal upc)
+        {
+            this.id = id;
+            this.nazwa = nazwa;
+            this.model = model;
+            this.quantity = quantity;
+            this.price = price;
+            this.sku = sku;
+            this.upc = upc;
+            this.date_available = "0000-00-00 00:00:00";
+            this.date_added = "0000-00-00 00:00:00";
+
+        }
+        /*
+        public static string modified()
+        {
+            string modified;
+            DateTime now = new System.DateTime();
+            now= System.DateTime.Now;
+            modified = "yyyy-MM-dd hh:mm:ss";
+            modified = now.ToString(modified);
+            return modified;
+
+        }*/
+    }
+
+
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.OutputEncoding = Encoding.GetEncoding("Windows-1250");
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+            int linie = File.ReadLines(@"baza.txt").Count();
+            string[,] baza = new string[linie,40];
+            List<produkt> produkty= new List<produkt>();
+            bool price = true;
+            bool quantity = true;
+            bool sku = true;
+            bool upc = true;
+            bool name = false;
+            short choice = 0;
+            updater.odczyt(ref produkty, linie);
+            updater.opcje(ref price, ref quantity, ref sku, ref upc, ref name, ref choice);
+            updater.zapisz(linie, produkty, ref price, ref quantity, ref sku, ref upc, ref name);
+            Console.WriteLine("Zakończono.");
+            Console.ReadLine();
+
+        }
+    }
+}
